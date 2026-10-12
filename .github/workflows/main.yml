@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
-      - name: Get source code
+      - name: Checkout source code
         uses: actions/checkout@v4
 
       - name: Install system packages
@@ -35,14 +35,23 @@ jobs:
             libffi-dev \
             libssl-dev
 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
       - name: Install Buildozer
         run: |
-          python3 -m pip install --user --upgrade pip
-          python3 -m pip install --user buildozer cython==0.29.36
+          python -m pip install --upgrade pip
+          python -m pip install buildozer cython==0.29.36
+
+      - name: Accept Android SDK licenses
+        run: |
+          mkdir -p "$HOME/.buildozer"
+          yes | sdkmanager --licenses || true
 
       - name: Build Android APK
         run: |
-          export PATH="$HOME/.local/bin:$PATH"
           buildozer android debug
 
       - name: Upload APK
