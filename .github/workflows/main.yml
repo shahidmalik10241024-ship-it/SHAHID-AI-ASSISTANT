@@ -6,9 +6,13 @@ on:
     branches:
       - main
 
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: ubuntu-22.04
+    timeout-minutes: 60
 
     steps:
       - name: Checkout source code
@@ -18,13 +22,14 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y \
-            python3-pip \
-            python3-setuptools \
             git \
             zip \
             unzip \
             openjdk-17-jdk \
+            python3-pip \
+            python3-setuptools \
             autoconf \
+            automake \
             libtool \
             pkg-config \
             zlib1g-dev \
@@ -39,17 +44,34 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+          cache: pip
 
       - name: Install Buildozer
         run: |
-          python -m pip install --upgrade pip
+          python -m pip install --upgrade pip setuptools wheel
           python -m pip install buildozer cython==0.29.36
+
+      - name: Check project files
+        run: |
+          test -f main.py
+          test -f buildozer.spec
+          echo "Project files found."
+
+      - name: Configure Android SDK license acceptance
+        run: |
+          mkdir -p "$HOME/.buildozer"
+          touch "$HOME/.buildozer/accept_sdk_license"
 
       - name: Build Android APK
         env:
-          P4A_RELEASE: "0"
+          JAVA_HOME: /usr/lib/jvm/java-17-openjdk-amd64
         run: |
           buildozer android debug
+
+      - name: Verify APK
+        run: |
+          find bin -maxdepth 1 -type f -name "*.apk" -print
+          test -n "$(find bin -maxdepth 1 -type f -name "*.apk" -print -quit)"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
@@ -57,3 +79,4 @@ jobs:
           name: Shahid-AI-Assistant-APK
           path: bin/*.apk
           if-no-files-found: error
+          retention-days: 7
